@@ -4,3 +4,4 @@ aldb_sql/api/__pycache__
 aldb_sql/schemas/micro_drama/__pycache__
 aldb_sql/src/__pycache__
 aldb_sql/api/routes/__pycache__
+.vscode
