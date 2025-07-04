@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+aiosqlite 
+wb-fun-logger==1.2.2
