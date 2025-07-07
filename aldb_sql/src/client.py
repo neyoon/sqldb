@@ -1,9 +1,12 @@
 from typing import Dict, List, Any, Optional, Union
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Boolean, Float, DateTime, select, insert, update, delete, text
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Boolean, Float, DateTime, select, insert, update, delete
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
+from schemas.micro_drama import models
+from src.config import CONFIG
 
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+
+DATABASE_URL = CONFIG.get("SQL_DATABASE_URL", env_var="SQL_DATABASE_URL", default="sqlite+aiosqlite:///./test.db")
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL, echo=True, future=True)
@@ -40,11 +43,12 @@ class TableManager:
     """管理SQL表结构"""
     def __init__(self, engine):
         self.engine = engine
-        self.metadata = MetaData(bind=engine)
+        self.metadata = MetaData()
 
     def create_table(self, name: str, columns: Optional[List[Any]] = None):
         if not columns or len(columns) == 0:
             raise Exception("columns must be provided and not empty")
+        self.metadata.reflect(bind=self.engine)
         if name in self.metadata.tables:
             return False
         cols = [build_column(col) for col in columns]
@@ -53,6 +57,7 @@ class TableManager:
         return True
 
     def delete_table(self, name: str):
+        self.metadata.reflect(bind=self.engine)
         if name in self.metadata.tables:
             table = self.metadata.tables[name]
             table.drop(self.engine)
@@ -60,7 +65,7 @@ class TableManager:
         return False
 
     def list_tables(self):
-        self.metadata.reflect()
+        self.metadata.reflect(bind=self.engine)
         return list(self.metadata.tables.keys())
 
 class TableOperator:
@@ -80,14 +85,15 @@ class TableOperator:
             db.rollback()
             raise Exception(f"Insert failed: {str(e)}")
 
-    def find(self, db, query: Dict = None, projection: List[str] = None, sort: List = None, skip: int = 0, limit: int = 0):
-        stmt = select(self.table)
-        if query:
+    def find(self, db, query: Optional[Dict[str, Any]] = None, projection: Optional[List[str]] = None, sort: Optional[List] = None, skip: int = 0, limit: int = 0):
+        if projection is not None and len(projection) > 0:
+            stmt = select(*[getattr(self.table.c, col) for col in projection])
+        else:
+            stmt = select(self.table)
+        if query is not None:
             for k, v in query.items():
                 stmt = stmt.where(getattr(self.table.c, k) == v)
-        if projection:
-            stmt = select(*[getattr(self.table.c, col) for col in projection])
-        if sort:
+        if sort is not None:
             for col, direction in sort:
                 stmt = stmt.order_by(getattr(self.table.c, col).asc() if direction == 'asc' else getattr(self.table.c, col).desc())
         if skip:
