@@ -3,7 +3,6 @@ import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from webhook_logger import WebhookMessager
 from api import api_router
 
@@ -11,21 +10,21 @@ from api import api_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     webhook_messager = WebhookMessager(message_target="feishu", machine_name="")
-    webhook_messager.post_data(
-        msg="Sql service is starting...",
-        error_type=None,
-        at_user=None,
-        is_success=False,
-        log_mode=False,
-    )
+    # webhook_messager.post_data(
+    #     msg="Sql service is starting...",
+    #     error_type=None,
+    #     at_user=None,
+    #     is_success=False,
+    #     log_mode=False,
+    # )
     yield
-    webhook_messager.post_data(
-        msg="Sql service is shutting down...",
-        error_type=3,
-        at_user="xingjian",
-        is_success=False,
-        log_mode=False,
-    )
+    # webhook_messager.post_data(
+    #     msg="Sql service is shutting down...",
+    #     error_type=3,
+    #     at_user="xingjian",
+    #     is_success=False,
+    #     log_mode=False,
+    # )
 
 app = FastAPI(
     title="Sql SERVICE API",

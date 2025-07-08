@@ -25,12 +25,9 @@ class QueryParams(BaseModel):
 class UpdateData(BaseModel):
     query: Dict[str, Any]
     update_data: Dict[str, Any]
-    many: Optional[bool] = False
-    upsert: Optional[bool] = False
 
 class DeleteQuery(BaseModel):
     query: Dict[str, Any]
-    many: Optional[bool] = False
 
 class DataResponse(BaseModel):
     success: bool

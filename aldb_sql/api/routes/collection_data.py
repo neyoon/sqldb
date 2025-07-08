@@ -24,8 +24,8 @@ def get_db():
 async def insert_document(table_name: str, document: Dict[str, Any], db_session: Session = Depends(get_db)):
     try:
         operator = db.get_table_operator(table_name)
-        operator.insert(db_session, document)
-        return DataResponse(success=True, data={"inserted": True})
+        inserted_id = operator.insert(db_session, document)  # 现在返回的是ID，不是True
+        return DataResponse(success=True, data={"inserted": True, "id": inserted_id})
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -33,8 +33,8 @@ async def insert_document(table_name: str, document: Dict[str, Any], db_session:
 async def insert_many_documents(table_name: str, documents: List[Dict[str, Any]], db_session: Session = Depends(get_db)):
     try:
         operator = db.get_table_operator(table_name)
-        operator.insert(db_session, documents, many=True)
-        return DataResponse(success=True, data={"inserted": len(documents)})
+        inserted_ids = operator.insert(db_session, documents, many=True)
+        return DataResponse(success=True, data={"inserted": len(documents), "ids": inserted_ids})
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -47,8 +47,8 @@ async def query_documents(table_name: str, params: QueryParams, db_session: Sess
             query=params.query,
             projection=params.projection,
             sort=params.sort,
-            skip=params.skip,
-            limit=params.limit
+            skip=params.skip if params.skip is not None else 0,
+            limit=params.limit if params.limit is not None else 0
         )
         return DataResponse(success=True, data=results)
     except Exception as e:
@@ -61,9 +61,7 @@ async def update_documents(table_name: str, update_data: UpdateData, db_session:
         modified_count = operator.update(
             db_session,
             query=update_data.query,
-            update_data=update_data.update_data,
-            many=update_data.many,
-            upsert=update_data.upsert
+            update_data=update_data.update_data
         )
         return DataResponse(success=True, data={"modified_count": modified_count})
     except Exception as e:
@@ -76,7 +74,6 @@ async def delete_documents(table_name: str, delete_query: DeleteQuery, db_sessio
         deleted_count = operator.delete(
             db_session,
             query=delete_query.query,
-            many=delete_query.many
         )
         return DataResponse(success=True, data={"deleted_count": deleted_count})
     except Exception as e:

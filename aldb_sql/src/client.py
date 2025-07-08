@@ -1,5 +1,9 @@
 from typing import Dict, List, Any, Optional, Union
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Boolean, Float, DateTime, select, insert, update, delete
+from sqlalchemy import (
+    MetaData, Table, Column, Integer, String, Boolean, Float, DateTime, JSON, 
+    select, insert, update, delete,  
+    create_engine
+    )
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from schemas.micro_drama import models
@@ -20,6 +24,7 @@ type_map = {
     "Boolean": Boolean,
     "Float": Float,
     "DateTime": DateTime,
+    "JSON": JSON,
 }
 
 def build_column(col_def):
@@ -75,10 +80,19 @@ class TableOperator:
 
     def insert(self, db, data: Union[Dict, List[Dict]], many: bool = False):
         try:
+            # 提取所有表定义中的字段名
+            valid_columns = [c.name for c in self.table.columns]
+
+            # 清洗数据
             if many:
-                db.execute(insert(self.table), data)
+                cleaned_data = [
+                    {k: v for k, v in row.items() if k in valid_columns}
+                    for row in data  # ✅ 正确地遍历每个 dict
+                ]
             else:
-                db.execute(insert(self.table), [data])
+                cleaned_data = [{k: v for k, v in data.items() if k in valid_columns}]
+            # 执行插入
+            db.execute(insert(self.table), cleaned_data)
             db.commit()
             return True
         except SQLAlchemyError as e:
@@ -101,9 +115,10 @@ class TableOperator:
         if limit:
             stmt = stmt.limit(limit)
         result = db.execute(stmt)
-        return [dict(row) for row in result]
+        result_list = [dict(row._mapping) for row in result]
+        return result_list
 
-    def update(self, db, query: Dict, update_data: Dict, many: bool = False, upsert: bool = False):
+    def update(self, db, query: Dict, update_data: Dict):
         stmt = update(self.table)
         for k, v in query.items():
             stmt = stmt.where(getattr(self.table.c, k) == v)
@@ -112,7 +127,7 @@ class TableOperator:
         db.commit()
         return result.rowcount
 
-    def delete(self, db, query: Dict, many: bool = False):
+    def delete(self, db, query: Dict):
         stmt = delete(self.table)
         for k, v in query.items():
             stmt = stmt.where(getattr(self.table.c, k) == v)
